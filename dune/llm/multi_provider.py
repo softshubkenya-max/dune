@@ -85,6 +85,14 @@ class MultiProviderLLM:
             'auto_fallback': 'enabled',
         }
     
+    def extract_query(self, user_input: str) -> str:
+        """Extract and structure user query for reasoning."""
+        # Delegate to OpenRouter which has this method
+        if hasattr(self.openrouter, 'extract_query'):
+            return self.openrouter.extract_query(user_input)
+        # Fallback: return JSON structure directly
+        return f'{{"object": "{user_input}"}}'
+    
     def switch_provider(self, provider: str) -> bool:
         """Manually switch provider."""
         if provider in ['openrouter', 'huggingface']:
