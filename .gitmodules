@@ -1,0 +1,21 @@
+[submodule "dune/haystack"]
+	path = dune/haystack
+	url = https://github.com/deepset-ai/haystack
+[submodule "dune/semantic-kernel"]
+	path = dune/semantic-kernel
+	url = https://github.com/microsoft/semantic-kernel
+[submodule "dune/awesome-generative-ui"]
+	path = dune/awesome-generative-ui
+	url = https://github.com/narrowin/awesome-generative-ui
+[submodule "dune/gpt-vis"]
+	path = dune/gpt-vis
+	url = https://github.com/antvis/GPT-Vis
+[submodule "dune/llm-markdown"]
+	path = dune/llm-markdown
+	url = https://github.com/skovy/llm-markdown
+[submodule "dune/katex"]
+	path = dune/katex
+	url = https://github.com/KaTeX/KaTeX
+[submodule "dune/botpress"]
+	path = dune/botpress
+	url = https://github.com/botpress/botpress

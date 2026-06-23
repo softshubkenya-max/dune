@@ -41,6 +41,12 @@ from dune.models.types import (
     Action, Plan, WorldState,
     ConceptProfile, RepresentationType, DifficultyLevel,
 )
+from dune.integrations import (
+    RAGPipeline, SemanticKernelOrchestrator, BotpressConnector,
+    MathRenderer, MarkdownProcessor, VisualizationEngine,
+    GenerativeUIComponent, get_capability, list_all_capabilities,
+    CapabilityRegistry,
+)
 
 __version__ = "1.0.0"
 __author__ = "DUNE Research"
@@ -65,4 +71,9 @@ __all__ = [
     "SemanticResonanceField", "MemoryState", "Episode",
     "Action", "Plan", "WorldState",
     "ConceptProfile", "RepresentationType", "DifficultyLevel",
+    # Integrated capabilities
+    "RAGPipeline", "SemanticKernelOrchestrator", "BotpressConnector",
+    "MathRenderer", "MarkdownProcessor", "VisualizationEngine",
+    "GenerativeUIComponent", "get_capability", "list_all_capabilities",
+    "CapabilityRegistry",
 ]
