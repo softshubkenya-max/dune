@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from streaming import StreamingResponse, IncrementalResponse
 
 from dune import DUNE, create_dune
+from dune.tts import get_tts, synthesize_response
 from dune.rag.mcp_ingest import AutonomousScheduler
 from dune.llm.openrouter import OpenRouterClient
 from dune.core.reasoning_engine import ReasoningEngine
@@ -180,6 +181,8 @@ class DUNEAPIHandler(http.server.BaseHTTPRequestHandler):
             self._handle_get_sessions()
         elif path.startswith('/api/sessions/') and path.endswith('/messages'):
             self._handle_get_session_messages(path)
+        elif path.startswith('/audio/'):
+            self._serve_audio_file(path)
         else:
             self._send_json({'error': 'Not found'}, 404)
 
@@ -231,6 +234,8 @@ class DUNEAPIHandler(http.server.BaseHTTPRequestHandler):
                     self._handle_chat_stream(body)
                 else:
                     self._handle_chat(body)
+            elif path == '/api/tts':
+                self._handle_tts(body)
             elif path == '/api/sessions':
                 self._handle_create_session(body)
             else:
@@ -673,6 +678,42 @@ class DUNEAPIHandler(http.server.BaseHTTPRequestHandler):
             })
         
         self._send_stream(reasoning_generator())
+
+    def _handle_tts(self, body: Dict) -> None:
+        """POST /api/tts - Convert text to speech."""
+        text = body.get('text', '')
+        if not text:
+            self._send_json({'error': 'No text provided'}, 400)
+            return
+        
+        try:
+            result = synthesize_response(text)
+            self._send_json(result)
+        except Exception as e:
+            self._send_json({'error': f'TTS synthesis failed: {str(e)}'}, 500)
+    
+    def _serve_audio_file(self, path: str) -> None:
+        """Serve audio files from ui/audio directory."""
+        filename = path.replace('/audio/', '')
+        audio_path = os.path.join(os.path.dirname(__file__), 'audio', filename)
+        
+        # Security: prevent directory traversal
+        if '..' in filename or not os.path.isfile(audio_path):
+            self._send_json({'error': 'Not found'}, 404)
+            return
+        
+        try:
+            with open(audio_path, 'rb') as f:
+                audio_data = f.read()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'audio/mpeg')
+            self.send_header('Content-Length', str(len(audio_data)))
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(audio_data)
+        except Exception as e:
+            self._send_json({'error': str(e)}, 500)
 
     def log_message(self, format, *args) -> None:
         """Override to suppress default logging."""
