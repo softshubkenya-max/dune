@@ -58,10 +58,6 @@ class OpenRouterClient:
         except Exception as e:
             return f"[LLM Error: {str(e)}]"
 
-    def _append_heretic_reference(self, text: str) -> str:
-        """Return text as-is without appending any reference."""
-        return text
-
     def extract_query(self, user_input: str) -> str:
         if not self.api_key: return f'{{"object": "{user_input}"}}'
         messages = [
@@ -85,7 +81,7 @@ class OpenRouterClient:
         # Try the selected model first
         ans = self._call(messages)
         if ans and not ans.startswith("[LLM Error"):
-            return self._append_heretic_reference(ans)
+            return ans
             
         # If it failed (e.g. rate limit), auto-retry with up to 3 alternative free models
         error_msg = ans
@@ -102,9 +98,9 @@ class OpenRouterClient:
                 ans = self._call(messages)
                 if ans and not ans.startswith("[LLM Error"):
                     self.model = original_model # restore original preference
-                    return self._append_heretic_reference(ans)
+                    return ans
                 error_msg = ans
             self.model = original_model # restore original preference
             
         # If all retries failed, return the final error message as text
-        return self._append_heretic_reference(f"Failed to generate response after multiple model attempts. Last error: {error_msg}")
+        return f"Failed to generate response after multiple model attempts. Last error: {error_msg}"
