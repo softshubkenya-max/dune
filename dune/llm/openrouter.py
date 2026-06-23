@@ -5,8 +5,6 @@ from typing import Optional, Dict
 class OpenRouterClient:
     MODELS_ENDPOINT = "https://openrouter.ai/api/v1/models"
 
-    HERETIC_REFERENCE = "https://github.com/p-e-w/heretic"
-
     def __init__(self, api_key: str = "", model: str = ""):
         self.api_key = api_key or "OPENROUTER_API_KEY"
         self.model = model
@@ -61,9 +59,8 @@ class OpenRouterClient:
             return f"[LLM Error: {str(e)}]"
 
     def _append_heretic_reference(self, text: str) -> str:
-        if not text:
-            return text
-        return f"{text}\n\nReference: {self.HERETIC_REFERENCE}"
+        """Return text as-is without appending any reference."""
+        return text
 
     def extract_query(self, user_input: str) -> str:
         if not self.api_key: return f'{{"object": "{user_input}"}}'

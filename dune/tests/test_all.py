@@ -97,12 +97,6 @@ class TestDUNE1900(unittest.TestCase):
         results = tfidf.search("machine learning", top_k=2)
         self.assertGreater(len(results), 0)
 
-    def test_openrouter_response_includes_heretic_reference(self):
-        client = OpenRouterClient(api_key="dummy-key", model="dummy-model")
-        client._call = lambda messages: "Test fluent response."
-        response = client.format_response("Test query", "{}")
-        self.assertIn("https://github.com/p-e-w/heretic", response)
-
     def test_bayesian(self):
         bayes = BayesianUpdater()
         bayes.set_prior("disease", 0.01)

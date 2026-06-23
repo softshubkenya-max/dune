@@ -14,6 +14,9 @@ from typing import Any, Dict
 
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.dirname(__file__))
+
+from streaming import StreamingResponse, IncrementalResponse
 
 from dune import DUNE, create_dune
 from dune.rag.mcp_ingest import AutonomousScheduler
@@ -105,6 +108,26 @@ class DUNEAPIHandler(http.server.BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
         self.wfile.write(json.dumps(data, default=str).encode('utf-8'))
+    
+    def _send_stream(self, generator, status: int = 200) -> None:
+        """Send streaming response with Server-Sent Events."""
+        self.send_response(status)
+        self.send_header('Content-Type', 'text/event-stream')
+        self.send_header('Cache-Control', 'no-cache')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Connection', 'keep-alive')
+        self.end_headers()
+        
+        try:
+            for chunk in generator:
+                self.wfile.write(chunk.encode('utf-8'))
+                self.wfile.flush()
+        except Exception as e:
+            error_event = StreamingResponse.stream_sse_event("error", {
+                "error": str(e)
+            })
+            self.wfile.write(error_event.encode('utf-8'))
 
     def _send_html(self, content: str, status: int = 200) -> None:
         """Send an HTML response."""
@@ -164,28 +187,50 @@ class DUNEAPIHandler(http.server.BaseHTTPRequestHandler):
         """Handle POST requests."""
         parsed = urlparse(self.path)
         path = parsed.path
+        query = parse_qs(parsed.query)
+        
+        # Check for streaming mode
+        stream = 'stream' in query
 
         try:
             body = self._read_body()
 
             if path == '/api/learn':
-                self._handle_learn(body)
+                if stream:
+                    self._handle_learn_stream(body)
+                else:
+                    self._handle_learn(body)
             elif path == '/api/reason':
-                self._handle_reason(body)
+                if stream:
+                    self._handle_reason_stream(body)
+                else:
+                    self._handle_reason(body)
             elif path == '/api/explain':
-                self._handle_explain(body)
+                if stream:
+                    self._handle_explain_stream(body)
+                else:
+                    self._handle_explain(body)
             elif path == '/api/plan':
-                self._handle_plan(body)
+                if stream:
+                    self._handle_plan_stream(body)
+                else:
+                    self._handle_plan(body)
             elif path == '/api/feedback':
                 self._handle_feedback(body)
             elif path == '/api/explain-with-reasoning':
-                self._handle_explain_with_reasoning(body)
+                if stream:
+                    self._handle_explain_with_reasoning_stream(body)
+                else:
+                    self._handle_explain_with_reasoning(body)
             elif path == '/api/mcp/source':
                 self._handle_mcp_source(body)
             elif path == '/api/config/openrouter':
                 self._handle_set_openrouter_config(body)
             elif path == '/api/chat':
-                self._handle_chat(body)
+                if stream:
+                    self._handle_chat_stream(body)
+                else:
+                    self._handle_chat(body)
             elif path == '/api/sessions':
                 self._handle_create_session(body)
             else:
@@ -419,6 +464,215 @@ class DUNEAPIHandler(http.server.BaseHTTPRequestHandler):
             self._send_json({'status': 'ok'})
         else:
             self._send_json({'error': 'Not found or failed to delete'}, 404)
+    
+    # ─── Streaming Handlers ───
+    
+    def _handle_learn_stream(self, body: Dict) -> None:
+        """POST /api/learn?stream - Stream learning results."""
+        text = body.get('text', '')
+        source = body.get('source', 'web_ui')
+        if not text:
+            self._send_json({'error': 'No text provided'}, 400)
+            return
+        
+        def learn_generator():
+            yield StreamingResponse.stream_sse_event("start", {"operation": "learn"})
+            result = dune.learn(text, source=source)
+            
+            # Stream result pieces
+            if isinstance(result, dict):
+                for key, value in result.items():
+                    yield StreamingResponse.stream_sse_event("data", {
+                        "key": key,
+                        "value": value
+                    })
+            else:
+                yield StreamingResponse.stream_sse_event("chunk", {
+                    "content": str(result)
+                })
+            
+            yield StreamingResponse.stream_sse_event("complete", {"status": "ok"})
+        
+        self._send_stream(learn_generator())
+
+    def _handle_chat_stream(self, body: Dict) -> None:
+        """POST /api/chat?stream - Stream chat response."""
+        query = body.get('query', '')
+        session_id = body.get('session_id')
+        
+        if not query:
+            self._send_json({'error': 'No query provided'}, 400)
+            return
+        
+        if session_id:
+            chat_store.add_message(session_id, 'user', query)
+        
+        def chat_generator():
+            yield StreamingResponse.stream_sse_event("start", {"operation": "chat"})
+            try:
+                # 1. LLM extracts core query as JSON
+                core_query_json = llm_client.extract_query(query)
+                yield StreamingResponse.stream_sse_event("progress", {"stage": "extracted_query"})
+                
+                # 2. Reasoning pipeline
+                decision_trace = reasoning_engine.process(core_query_json)
+                yield StreamingResponse.stream_sse_event("progress", {"stage": "reasoning"})
+                
+                # Explanation
+                explanation = dune.explain_with_reasoning(decision_trace.get("concept", query))
+                decision_trace["dune_vi_explanation"] = explanation
+                yield StreamingResponse.stream_sse_event("progress", {"stage": "explanation"})
+                
+                formatted_trace = reasoning_engine.format_decision_for_llm(decision_trace)
+                
+                # 3. LLM formats output - stream word by word
+                fluent_response = llm_client.format_response(query, formatted_trace)
+                words = str(fluent_response).split()
+                for i, word in enumerate(words):
+                    yield StreamingResponse.stream_sse_event("chunk", {"content": word, "index": i})
+                
+                if session_id:
+                    chat_store.add_message(session_id, 'bot', fluent_response)
+                
+                yield StreamingResponse.stream_sse_event("complete", {"status": "ok"})
+            except Exception as e:
+                yield StreamingResponse.stream_sse_event("error", {"error": str(e)})
+        
+        self._send_stream(chat_generator())
+    
+    def _handle_reason_stream(self, body: Dict) -> None:
+        """POST /api/reason?stream - Stream reasoning process."""
+        query = body.get('query', '')
+        if not query:
+            self._send_json({'error': 'No query provided'}, 400)
+            return
+        
+        def reason_generator():
+            yield StreamingResponse.stream_sse_event("start", {"operation": "reason"})
+            result = dune.reason(query)
+            
+            # Stream reasoning steps
+            words = str(result).split()
+            for i, word in enumerate(words):
+                yield StreamingResponse.stream_sse_event("chunk", {
+                    "content": word,
+                    "index": i,
+                    "total": len(words)
+                })
+            
+            yield StreamingResponse.stream_sse_event("complete", {"status": "ok"})
+        
+        self._send_stream(reason_generator())
+    
+    def _handle_explain_stream(self, body: Dict) -> None:
+        """POST /api/explain?stream - Stream explanation."""
+        concept = body.get('concept', '')
+        audience = body.get('audience', 'INTERMEDIATE')
+        if not concept:
+            self._send_json({'error': 'No concept provided'}, 400)
+            return
+
+        from dune.models.types import DifficultyLevel
+        level_map = {
+            'BEGINNER': DifficultyLevel.BEGINNER,
+            'INTERMEDIATE': DifficultyLevel.INTERMEDIATE,
+            'EXPERT': DifficultyLevel.EXPERT,
+        }
+        level = level_map.get(audience.upper(), DifficultyLevel.INTERMEDIATE)
+
+        def explain_generator():
+            yield StreamingResponse.stream_sse_event("start", {
+                "operation": "explain",
+                "concept": concept
+            })
+            
+            explanation = dune.explain(concept, audience=level)
+            
+            # Stream explanation sentence by sentence
+            sentences = str(explanation).split('. ')
+            for i, sentence in enumerate(sentences):
+                yield StreamingResponse.stream_sse_event("chunk", {
+                    "content": sentence + ('. ' if i < len(sentences) - 1 else ''),
+                    "index": i,
+                    "total": len(sentences)
+                })
+            
+            yield StreamingResponse.stream_sse_event("complete", {
+                "status": "ok",
+                "concept": concept,
+                "audience": audience
+            })
+        
+        self._send_stream(explain_generator())
+    
+    def _handle_plan_stream(self, body: Dict) -> None:
+        """POST /api/plan?stream - Stream planning process."""
+        goal = body.get('goal', '')
+        if not goal:
+            self._send_json({'error': 'No goal provided'}, 400)
+            return
+        
+        def plan_generator():
+            yield StreamingResponse.stream_sse_event("start", {
+                "operation": "plan",
+                "goal": goal
+            })
+            
+            result = dune.plan(goal)
+            
+            # Stream plan steps
+            if isinstance(result, dict):
+                steps = result.get('steps', [])
+                for i, step in enumerate(steps):
+                    yield StreamingResponse.stream_sse_event("item", {
+                        "content": step,
+                        "index": i,
+                        "total": len(steps)
+                    })
+            else:
+                yield StreamingResponse.stream_sse_event("chunk", {
+                    "content": str(result)
+                })
+            
+            yield StreamingResponse.stream_sse_event("complete", {"status": "ok"})
+        
+        self._send_stream(plan_generator())
+    
+    def _handle_explain_with_reasoning_stream(self, body: Dict) -> None:
+        """POST /api/explain-with-reasoning?stream - Stream full reasoning trace."""
+        query = body.get('query', '')
+        if not query:
+            self._send_json({'error': 'No query provided'}, 400)
+            return
+        
+        def reasoning_generator():
+            yield StreamingResponse.stream_sse_event("start", {
+                "operation": "explain_with_reasoning"
+            })
+            
+            explanation = dune.explain_with_reasoning(query)
+            reasoning = dune.reason(query)
+            
+            # Stream explanation
+            yield StreamingResponse.stream_sse_event("phase", {
+                "name": "explanation",
+                "content": str(explanation)[:100]
+            })
+            
+            # Stream reasoning
+            words = str(reasoning).split()
+            for i, word in enumerate(words[:50]):
+                yield StreamingResponse.stream_sse_event("reasoning_chunk", {
+                    "content": word,
+                    "index": i
+                })
+            
+            yield StreamingResponse.stream_sse_event("complete", {
+                "status": "ok",
+                "query": query
+            })
+        
+        self._send_stream(reasoning_generator())
 
     def log_message(self, format, *args) -> None:
         """Override to suppress default logging."""

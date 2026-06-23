@@ -117,7 +117,7 @@
         <a href="/dev">Dev Mode</a>
     </div>
     <div class="chat-container" id="chat">
-        <div class="message bot-message">Hello. I am DUNE, continuously ingesting scientific data via MCP and RAG. Ask me anything.</div>
+        <div class="message bot-message">Hello. I am DUNE. Ask me anything.</div>
     </div>
     <div class="input-area">
         <input type="text" id="prompt" placeholder="Message DUNE..." onkeypress="if(event.key === 'Enter') send()">
@@ -141,18 +141,64 @@
             appendMsg(query, 'user-message');
             input.value = '';
             
-            const typingId = appendMsg('Thinking...', 'bot-message');
+            const typingId = appendMsg('', 'bot-message');
+            const typingEl = document.getElementById(typingId);
+            typingEl.innerHTML = '<em>Thinking...</em>';
             
             try {
-                const res = await fetch('/api/chat', {
+                const res = await fetch('/api/chat?stream', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({query})
                 });
-                const text = await res.text();
-                
-                document.getElementById(typingId).remove();
-                appendMsg(text, 'bot-message');
+
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.startsWith('text/event-stream')) {
+                    // Read SSE-style stream from response body
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+
+                        let parts = buffer.split('\n\n');
+                        buffer = parts.pop();
+
+                        for (const part of parts) {
+                            const lines = part.split('\n');
+                            let event = null;
+                            let data = '';
+                            for (const line of lines) {
+                                if (line.startsWith('event:')) event = line.replace('event:', '').trim();
+                                if (line.startsWith('data:')) data += line.replace('data:', '').trim();
+                            }
+                            try {
+                                const parsed = JSON.parse(data);
+                                // Handle chunk events
+                                if (parsed.content) {
+                                    typingEl.innerHTML = marked.parse(parsed.content);
+                                } else if (parsed.value && typeof parsed.value === 'string') {
+                                    typingEl.innerHTML = marked.parse(parsed.value);
+                                }
+                            } catch (err) {
+                                // Not JSON, append raw
+                                typingEl.innerHTML = (typingEl.innerHTML || '') + data;
+                            }
+                        }
+                    }
+
+                    // Finalize
+                    document.getElementById(typingId).remove();
+                    appendMsg(typingEl.innerText || typingEl.textContent || '', 'bot-message');
+
+                } else {
+                    const text = await res.text();
+                    document.getElementById(typingId).remove();
+                    appendMsg(text, 'bot-message');
+                }
             } catch (e) {
                 document.getElementById(typingId).remove();
                 appendMsg(`Connection error: ${e.message}`, 'bot-message');
