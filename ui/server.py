@@ -20,6 +20,7 @@ from streaming import StreamingResponse, IncrementalResponse
 
 from dune import DUNE, create_dune
 from dune.tts import get_tts, synthesize_response
+from dune.llm.multi_provider import get_multi_provider_llm
 from dune.rag.mcp_ingest import AutonomousScheduler
 from dune.llm.openrouter import OpenRouterClient
 from dune.core.reasoning_engine import ReasoningEngine
@@ -31,7 +32,11 @@ from dune.db.chat_store import ChatStore
 
 dune = create_dune()
 
-llm_client = OpenRouterClient(
+# Initialize Multi-Provider LLM (OpenRouter + HuggingFace with auto-fallback)
+llm_client = get_multi_provider_llm()
+
+# Legacy OpenRouter client for direct access if needed
+openrouter_client = OpenRouterClient(
     api_key=os.environ.get('OPENROUTER_API_KEY', '')
 )
 
@@ -396,23 +401,20 @@ class DUNEAPIHandler(http.server.BaseHTTPRequestHandler):
         self._send_json({'status': 'ok'})
 
     def _handle_get_openrouter_config(self) -> None:
-        self._send_json({
-            'api_key': llm_client.api_key,
-            'model': llm_client.model
-        })
+        """GET /api/config/openrouter - Get LLM provider configuration."""
+        status = llm_client.get_status()
+        self._send_json(status)
 
     def _handle_set_openrouter_config(self, body: Dict) -> None:
-        if 'api_key' in body:
-            llm_client.api_key = body['api_key']
-        if 'model' in body:
-            llm_client.model = body['model']
-        self._send_json({'status': 'ok'})
+        """POST /api/config/openrouter - Set LLM provider configuration."""
+        if 'provider' in body:
+            llm_client.switch_provider(body['provider'])
+        self._send_json({'status': 'ok', 'current_provider': llm_client.current_provider})
 
     def _handle_all_models(self) -> None:
-        """GET /api/models - List all models from OpenRouter."""
-        llm_client._models_cache = None  # force refresh
-        models = llm_client.fetch_all_models()
-        self._send_json({'models': models, 'current': llm_client.model})
+        """GET /api/models - List all models from all providers."""
+        all_models = llm_client.get_all_models()
+        self._send_json(all_models)
 
     def _handle_chat(self, body: Dict) -> None:
         """POST /api/chat - Fluent chat with LLM + DUNE"""
