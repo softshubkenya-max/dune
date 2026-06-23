@@ -47,6 +47,10 @@ from dune.integrations import (
     GenerativeUIComponent, get_capability, list_all_capabilities,
     CapabilityRegistry,
 )
+from dune.modules import (
+    ModulesManager, get_modules_manager, get_module,
+    list_modules, get_module_status,
+)
 
 __version__ = "1.0.0"
 __author__ = "DUNE Research"
@@ -76,4 +80,7 @@ __all__ = [
     "MathRenderer", "MarkdownProcessor", "VisualizationEngine",
     "GenerativeUIComponent", "get_capability", "list_all_capabilities",
     "CapabilityRegistry",
+    # Modules
+    "ModulesManager", "get_modules_manager", "get_module",
+    "list_modules", "get_module_status",
 ]
