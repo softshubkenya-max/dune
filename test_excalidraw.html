@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@excalidraw/excalidraw@0.17.3/dist/excalidraw.production.min.js"></script>
+</head>
+<body>
+<div id="out"></div>
+<script>
+window.onload = async () => {
+    try {
+        const svg = await ExcalidrawLib.exportToSvg({
+            elements: [
+                {
+                    type: "rectangle",
+                    x: 100, y: 100, width: 200, height: 100,
+                    strokeColor: "#000000", backgroundColor: "transparent",
+                    fillStyle: "hachure", strokeWidth: 1, strokeStyle: "solid",
+                    roughness: 1, opacity: 100, roundness: null, seed: 1
+                }
+            ],
+            appState: { exportBackground: true, viewBackgroundColor: "#ffffff" }
+        });
+        document.getElementById('out').appendChild(svg);
+        console.log("Success");
+    } catch(e) {
+        console.error(e);
+    }
+}
+</script>
+</body>
+</html>

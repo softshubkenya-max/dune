@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUNE-Ω∞-1900-L</title>
+    <style>
+        /* ═══════════════════════════════════════════════════════════════
+   DUNE-Ω∞-1900-L Web UI Styles
+   ═══════════════════════════════════════════════════════════════ */
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-card: #1c2333;
+            --bg-input: #0d1117;
+            --border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-cyan: #00d4ff;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #bc8cff;
+            --accent-orange: #d29922;
+            --accent-red: #f85149;
+            --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-ui);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* ─── Header ─── */
+        .header {
+            background: linear-gradient(135deg, #0d1117 0%, #1c2333 50%, #0d1117 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-family: var(--font-mono);
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+        }
+
+        .header .subtitle {
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 0.3rem;
+        }
+
+        .header .tagline {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 0.8rem;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+        }
+
+        .header .tagline span {
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .header .tagline span:hover {
+            opacity: 1;
+        }
+
+        .header .tagline .sep {
+            color: var(--border);
+        }
+
+        /* ─── Main Layout ─── */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .pillars {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 1000px) {
+            .pillars {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .pillars {
+                grid-template-columns: 1fr;
+            }
+
+            .header .tagline {
+                flex-wrap: wrap;
+            }
+        }
+
+        .pillar-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pillar-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .pillar-card:hover::before {
+            opacity: 1;
+        }
+
+        .pillar-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.1);
+        }
+
+        .pillar-card.pillar-learning::before {
+            background: var(--accent-cyan);
+        }
+
+        .pillar-card.pillar-cognitive::before {
+            background: var(--accent-purple);
+        }
+
+        .pillar-card.pillar-logic::before {
+            background: var(--accent-green);
+        }
+
+        .pillar-card.pillar-publishing::before {
+            background: var(--accent-orange);
+        }
+
+        .pillar-card .pillar-num {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.3rem;
+        }
+
+        .pillar-card h3 {
+            font-size: 1rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .pillar-card .pillar-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .pillar-card .pillar-status {
+            display: inline-block;
+            margin-top: 0.5rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-family: var(--font-mono);
+        }
+
+        .status-active {
+            background: rgba(63, 185, 80, 0.15);
+            color: var(--accent-green);
+        }
+
+        .status-inactive {
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--accent-red);
+        }
+
+        /* ─── Control Panel ─── */
+        .control-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 800px) {
+            .control-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+        }
+
+        .panel h3 {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+            margin-bottom: 0.8rem;
+        }
+
+        .panel label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.3rem;
+        }
+
+        .panel input,
+        .panel textarea,
+        .panel select {
+            width: 100%;
+            padding: 0.6rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            margin-bottom: 0.7rem;
+            transition: border-color 0.2s;
+        }
+
+        .panel input:focus,
+        .panel textarea:focus,
+        .panel select:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+        }
+
+        .panel textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.55rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(0, 212, 255, 0.08);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(188, 140, 255, 0.15));
+            border-color: var(--accent-cyan);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.25), rgba(188, 140, 255, 0.25));
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.15);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* ─── Output Area ─── */
+        .output-area {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            background: rgba(13, 17, 23, 0.5);
+        }
+
+        .output-header h3 {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .output-header .output-tab {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            background: rgba(0, 212, 255, 0.1);
+            color: var(--accent-cyan);
+            font-family: var(--font-mono);
+        }
+
+        .output-body {
+            padding: 1.25rem;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .output-body .placeholder {
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 3rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .output-body .system-output {
+            color: var(--accent-cyan);
+        }
+
+        .output-body .evidence-item {
+            color: var(--accent-green);
+        }
+
+        .output-body .error-message {
+            color: var(--accent-red);
+        }
+
+        .output-body .conclusion {
+            color: var(--accent-purple);
+            font-weight: bold;
+        }
+
+        /* ─── Status Bar ─── */
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+            text-align: center;
+        }
+
+        .stat-card .stat-value {
+            font-family: var(--font-mono);
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--accent-cyan);
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 0.2rem;
+        }
+
+        /* ─── Spinner ─── */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ─── Buttons row ─── */
+        .buttons-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* ─── Loader overlay ─── */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ════════════════════════════════════════════════════════════
+     HEADER
+     ════════════════════════════════════════════════════════════ -->
+    <div class="header">
+        <h1>◈ DUNE-Ω∞-1900-L</h1>
+        <div class="subtitle">Distributed Unified Neuro-Emergent Intelligence</div>
+        <div class="tagline">
+            <span>Learn</span><span class="sep">→</span>
+            <span>Understand</span><span class="sep">→</span>
+            <span>Prove</span><span class="sep">→</span>
+            <span>Simulate</span><span class="sep">→</span>
+            <span>Plan</span><span class="sep">→</span>
+            <span>Explain</span><span class="sep">→</span>
+            <span>Adapt</span>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════
+     PILLARS
+     ════════════════════════════════════════════════════════════ -->
+    <div class="container">
+        <div class="pillars">
+            <div class="pillar-card pillar-learning">
+                <div class="pillar-num">DUNE-1900</div>
+                <h3 style="color: var(--accent-cyan);">Statistical Learning</h3>
+                <div class="pillar-desc">N-grams · TF-IDF · Bayesian · Semantic Graphs</div>
+                <span class="pillar-status status-active">● Active</span>
+            </div>
+            <div class="pillar-card pillar-cognitive">
+                <div class="pillar-num">DUNE-ΩΩΩ</div>
+                <h3 style="color: var(--accent-purple);">Cognitive OS</h3>
+                <div class="pillar-desc">SRF/ART · Memory · World Model · Executive Planning</div>
+                <span class="pillar-status status-active">● Active</span>
+            </div>
+            <div class="pillar-card pillar-logic">
+                <div class="pillar-num">DUNE-Logic</div>
+                <h3 style="color: var(--accent-green);">Formal Reasoning</h3>
+                <div class="pillar-desc">A* · Bayes Nets · MDP · Boolean · LP · HMM</div>
+                <span class="pillar-status status-active">● Active</span>
+            </div>
+            <div class="pillar-card pillar-publishing">
+                <div class="pillar-num">DUNE-VI</div>
+                <h3 style="color: var(--accent-orange);">Publishing Engine</h3>
+                <div class="pillar-desc">Representation · Human Model · Adaptive Explain</div>
+                <span class="pillar-status status-active">● Active</span>
+            </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════
+       CONTROL PANELS
+       ════════════════════════════════════════════════════════════ -->
+        <div class="control-panel">
+
+            <!-- Learn Panel -->
+            <div class="panel">
+                <h3>📚 DUNE-1900: Learn</h3>
+                <label for="learn-input">Input text to ingest:</label>
+                <textarea id="learn-input"
+                    placeholder="Enter knowledge to learn...">DUNE systems optimize cognition through the integration of learning, reasoning, simulation, proof, and communication.</textarea>
+                <div class="buttons-row">
+                    <button class="btn btn-primary" onclick="doLearn()">⫸ Ingest Knowledge</button>
+                    <button class="btn" onclick="clearInput('learn-input')">✕ Clear</button>
+                </div>
+            </div>
+
+            <!-- Reason Panel -->
+            <div class="panel">
+                <h3>🔍 DUNE-Logic: Reason</h3>
+                <label for="reason-input">Query to reason about:</label>
+                <input id="reason-input" type="text" value="What is Bayesian inference?"
+                    placeholder="Ask a question...">
+                <div class="buttons-row">
+                    <button class="btn btn-primary" onclick="doReason()">⊞ Reason</button>
+                    <button class="btn" onclick="doExplainWithReasoning()">⟐ Full Trace</button>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="control-panel">
+
+            <!-- Explain Panel -->
+            <div class="panel">
+                <h3>📖 DUNE-VI: Explain</h3>
+                <label for="explain-input">Concept to explain:</label>
+                <input id="explain-input" type="text" value="DUNE" placeholder="Enter a concept...">
+                <label for="audience-select">Audience level:</label>
+                <select id="audience-select">
+                    <option value="BEGINNER">Beginner</option>
+                    <option value="INTERMEDIATE" selected>Intermediate</option>
+                    <option value="EXPERT">Expert</option>
+                </select>
+                <div class="buttons-row">
+                    <button class="btn btn-primary" onclick="doExplain()">⫸ Explain</button>
+                </div>
+            </div>
+
+            <!-- Plan Panel -->
+            <div class="panel">
+                <h3>🎯 DUNE-ΩΩΩ: Plan</h3>
+                <label for="plan-input">Goal to achieve:</label>
+                <input id="plan-input" type="text" value="research AI reasoning" placeholder="Enter a goal...">
+                <div class="buttons-row">
+                    <button class="btn btn-primary" onclick="doPlan()">⫸ Create Plan</button>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="control-panel">
+            <!-- MCP Panel -->
+            <div class="panel" style="grid-column: 1 / -1;">
+                <h3>🤖 Autonomous MCP / RAG</h3>
+                <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label>Source Name:</label>
+                        <input id="mcp-name" type="text" placeholder="e.g. arXiv_physics">
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Source Type:</label>
+                        <select id="mcp-type">
+                            <option value="api">API Endpoint</option>
+                            <option value="url">Web URL</option>
+                        </select>
+                    </div>
+                    <div style="flex: 2;">
+                        <label>URI:</label>
+                        <input id="mcp-uri" type="text" placeholder="http://export.arxiv.org/api/query?search_query=all:physics">
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="addMcpSource()" style="margin-bottom: 0.7rem;">+ Add Source</button>
+                    </div>
+                </div>
+                <div id="mcp-status" style="margin-top: 1rem; font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-cyan);">
+                    Loading scheduler status...
+                </div>
+            </div>
+
+            <!-- OpenRouter LLM Panel -->
+            <div class="panel" style="grid-column: 1 / -1;">
+                <h3>🧠 OpenRouter LLM Fluency Settings</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">Configure the free LLM used by the Client UI to provide conversational fluency over DUNE's reasoning.</p>
+                <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                    <div style="flex: 2;">
+                        <label>OpenRouter API Key:</label>
+                        <input id="llm-key" type="password" placeholder="sk-or-v1-...">
+                    </div>
+                    <div style="flex: 2;">
+                        <label>Model Selection:</label>
+                        <select id="llm-model">
+                            <option value="">Loading models from API...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="saveLLMSettings()" style="margin-bottom: 0.7rem;">Save Settings</button>
+                    </div>
+                </div>
+                <div id="llm-status" style="margin-top: 1rem; font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-green);">
+                </div>
+            </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════
+       OUTPUT
+       ════════════════════════════════════════════════════════════ -->
+        <div class="output-area">
+            <div class="output-header">
+                <h3>◈ Output</h3>
+                <span class="output-tab" id="output-tab">ready</span>
+            </div>
+            <div class="output-body" id="output-body">
+                <div class="placeholder">
+                    ╔══════════════════════════════════════════════╗<br>
+                    ║ DUNE-Ω∞-1900-L Cognitive Engine Ready ║<br>
+                    ║ ║<br>
+                    ║ Use the panels above to: ║<br>
+                    ║ • Learn new knowledge ║<br>
+                    ║ • Reason about concepts ║<br>
+                    ║ • Get adaptive explanations ║<br>
+                    ║ • Create optimal plans ║<br>
+                    ║ ║<br>
+                    ║ Intelligence = Learning + Reasoning ║<br>
+                    ║ + Simulation + Proof ║<br>
+                    ║ + Communication ║<br>
+                    ╚══════════════════════════════════════════════╝
+                </div>
+            </div>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════════
+       STATUS BAR
+       ════════════════════════════════════════════════════════════ -->
+        <div class="status-bar" id="status-bar">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-vocab">-</div>
+                <div class="stat-label">Vocabulary</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-facts">-</div>
+                <div class="stat-label">Knowledge Facts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-concepts">-</div>
+                <div class="stat-label">VI Concepts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-interactions">-</div>
+                <div class="stat-label">Interactions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-tokens">-</div>
+                <div class="stat-label">Tokens Learned</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-feedback">-</div>
+                <div class="stat-label">Avg Feedback</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ════════════════════════════════════════════════════════════ -->
+    <script>
+        // ─── API Calls ───
+
+        async function api(method, path, body) {
+            const opts = {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+            };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(path, opts);
+            return await res.json();
+        }
+
+        function getApi() { return ''; }  // same origin
+
+        // ─── UI Helpers ───
+
+        let typingTimeout = null;
+
+        function setOutput(content, type = 'text') {
+            const el = document.getElementById('output-body');
+            el.innerHTML = '';
+            const pre = document.createElement('pre');
+            pre.style.margin = '0';
+            pre.style.whiteSpace = 'pre-wrap';
+            pre.style.wordBreak = 'break-word';
+            pre.style.fontFamily = "'SF Mono', 'Fira Code', monospace";
+            pre.style.fontSize = '0.9rem';
+            pre.style.lineHeight = '1.6';
+            pre.style.color = '#00d4ff';
+            pre.style.textShadow = '0 0 2px rgba(0, 212, 255, 0.4)';
+            
+            const fullText = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+            
+            // Add blinking cursor
+            const cursor = document.createElement('span');
+            cursor.className = 'cli-cursor';
+            
+            if (!document.getElementById('cli-styles')) {
+                const style = document.createElement('style');
+                style.id = 'cli-styles';
+                style.textContent = `
+                    @keyframes cli-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+                    .cli-cursor { display: inline-block; width: 8px; height: 1em; background-color: #00d4ff; vertical-align: text-bottom; animation: cli-blink 1s step-end infinite; margin-left: 4px; box-shadow: 0 0 5px #00d4ff; }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            pre.appendChild(cursor);
+            el.appendChild(pre);
+            document.getElementById('output-tab').textContent = type;
+            
+            if (typingTimeout) clearTimeout(typingTimeout);
+            
+            let i = 0;
+            function typeNext() {
+                if (i < fullText.length) {
+                    // Type up to 3 characters at a time for speed, with slight variation
+                    const charsToType = Math.floor(Math.random() * 3) + 1;
+                    const chunk = fullText.substring(i, i + charsToType);
+                    pre.insertBefore(document.createTextNode(chunk), cursor);
+                    i += charsToType;
+                    
+                    // Auto-scroll to bottom
+                    el.scrollTop = el.scrollHeight;
+                    
+                    // Human typing speed variation (faster for CLI output)
+                    const delay = Math.random() * 10 + 2; 
+                    typingTimeout = setTimeout(typeNext, delay);
+                } else {
+                    typingTimeout = null;
+                }
+            }
+            typeNext();
+        }
+
+        function setLoading(loading) {
+            document.querySelectorAll('.panel, .btn').forEach(el => {
+                el.classList.toggle('loading', loading);
+            });
+        }
+
+        function showError(msg) {
+            setOutput(`\x1b[31mERROR: ${msg}\x1b[0m`, 'error');
+        }
+
+        function clearInput(id) {
+            document.getElementById(id).value = '';
+        }
+
+        // ─── API Actions ───
+
+        async function doLearn() {
+            const text = document.getElementById('learn-input').value.trim();
+            if (!text) { showError('Please enter text to learn.'); return; }
+
+            setLoading(true);
+            try {
+                const result = await api('POST', '/api/learn', { text });
+                const lines = [
+                    '╔══════════════════ Knowledge Ingestion ═════════════════╗',
+                    `  Source: ${result.source}`,
+                    `  Tokens added: ${result.tokens_added}`,
+                    `  Facts stored: ${result.facts_stored}`,
+                    `  Vocabulary size: ${result.vocab_size}`,
+                    `  Knowledge Graph nodes: ${result.kg_nodes}`,
+                    '╚════════════════════════════════════════════════════════╝',
+                ];
+                setOutput(lines.join('\n'), 'learn');
+                updateStatus();
+            } catch (e) {
+                showError(e.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function doReason() {
+            const query = document.getElementById('reason-input').value.trim();
+            if (!query) { showError('Please enter a query.'); return; }
+
+            setLoading(true);
+            try {
+                const result = await api('POST', '/api/reason', { query });
+                const lines = [
+                    '╔═════════════════════ Reasoning ═══════════════════════╗',
+                    `  Query: ${result.query}`,
+                    '',
+                    '  EVIDENCE:',
+                ];
+                if (result.evidence && result.evidence.length > 0) {
+                    result.evidence.forEach((ev, i) => {
+                        lines.push(`    [${i + 1}] Score: ${ev.score?.toFixed(3)}`);
+                        lines.push(`        ${ev.content?.substring(0, 100)}...`);
+                    });
+                } else {
+                    lines.push('    (No evidence found)');
+                }
+
+                if (result.bayesian_confidence) {
+                    lines.push('');
+                    lines.push(`  Bayesian Confidence: ${result.bayesian_confidence.toFixed(4)}`);
+                }
+                if (result.logical_inference) {
+                    lines.push('');
+                    lines.push('  REASONING PATH:');
+                    const path = result.logical_inference.path?.join(' → ') || 'N/A';
+                    lines.push(`    ${path}`);
+                }
+                if (result.cognitive_analysis) {
+                    lines.push('');
+                    lines.push('  COGNITIVE ANALYSIS:');
+                    lines.push(`    ${result.cognitive_analysis.conclusion || 'Completed'}`);
+                }
+                lines.push('');
+                lines.push(`  CONCLUSION: ${result.conclusion}`);
+                lines.push('╚════════════════════════════════════════════════════╝');
+                setOutput(lines.join('\n'), 'reason');
+            } catch (e) {
+                showError(e.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function doExplain() {
+            const concept = document.getElementById('explain-input').value.trim();
+            const audience = document.getElementById('audience-select').value;
+            if (!concept) { showError('Please enter a concept.'); return; }
+
+            setLoading(true);
+            try {
+                const result = await api('POST', '/api/explain', { concept, audience });
+                const lines = [
+                    `╔═══════════════════ ${concept} ═══════════════════╗`,
+                    `  Audience: ${audience}`,
+                    '╚═════════════════════════════════════════════════════╝',
+                    '',
+                    result.explanation,
+                ];
+                setOutput(lines.join('\n'), 'explain');
+            } catch (e) {
+                showError(e.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function doPlan() {
+            const goal = document.getElementById('plan-input').value.trim();
+            if (!goal) { showError('Please enter a goal.'); return; }
+
+            setLoading(true);
+            try {
+                const result = await api('POST', '/api/plan', { goal });
+                const lines = [
+                    '╔══════════════════════ Plan ═══════════════════════╗',
+                    `  Goal: ${result.goal}`,
+                    `  Total Utility: ${result.total_utility?.toFixed(2)}`,
+                    `  Verified: ${result.verified}`,
+                    '',
+                    '  ACTION SEQUENCE:',
+                ];
+
+                if (result.plan?.actions) {
+                    result.plan.actions.forEach((action, i) => {
+                        const name = action.name || action;
+                        lines.push(`    ${i + 1}. ${name}`);
+                    });
+                }
+                lines.push('');
+                lines.push('  SIMULATION:');
+                if (result.simulation) {
+                    result.simulation.forEach((steps, i) => {
+                        steps.forEach(step => {
+                            lines.push(`    Step ${step.step}: ${step.outcome} (reward: ${step.reward})`);
+                        });
+                    });
+                }
+                lines.push('╚══════════════════════════════════════════════════╝');
+                setOutput(lines.join('\n'), 'plan');
+            } catch (e) {
+                showError(e.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function doExplainWithReasoning() {
+            const query = document.getElementById('reason-input').value.trim();
+            if (!query) { showError('Please enter a query.'); return; }
+
+            setLoading(true);
+            try {
+                const result = await api('POST', '/api/explain-with-reasoning', { query });
+                const lines = [
+                    '╔═══════════════ Full Cognitive Trace ═══════════════╗',
+                    `  Query: ${result.query}`,
+                    '╚════════════════════════════════════════════════════╝',
+                    '',
+                    '📚 REASONING:',
+                ];
+
+                if (result.reasoning?.evidence) {
+                    result.reasoning.evidence.forEach(ev => {
+                        lines.push(`  • ${ev.content?.substring(0, 80)}...`);
+                    });
+                }
+                lines.push('');
+                lines.push('📖 EXPLANATION:');
+                lines.push('');
+                if (result.explanation) {
+                    // Strip ANSI-like markers and add clean text
+                    const clean = result.explanation.replace(/\\x1b\[[0-9;]*m/g, '');
+                    lines.push(clean);
+                }
+                setOutput(lines.join('\n'), 'full-trace');
+            } catch (e) {
+                showError(e.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // ─── Status Update ───
+
+        async function updateStatus() {
+            try {
+                const status = await api('GET', '/api/status', null);
+                const concepts = await api('GET', '/api/concepts', null);
+                const feedback = await api('GET', '/api/feedback', null);
+
+                document.getElementById('stat-vocab').textContent =
+                    status.learning_engine?.vocab_size ?? '-';
+                document.getElementById('stat-facts').textContent =
+                    (status.learning_engine?.kg_nodes ?? 0) + (status.cognitive_os?.memory?.semantic_nodes ?? 0);
+                document.getElementById('stat-concepts').textContent =
+                    Object.keys(concepts).length;
+                document.getElementById('stat-interactions').textContent =
+                    status.interactions ?? 0;
+                document.getElementById('stat-tokens').textContent =
+                    status.learning_engine?.total_tokens ?? 0;
+                document.getElementById('stat-feedback').textContent =
+                    feedback?.average?.toFixed(2) ?? '-';
+            } catch (e) {
+                console.error('Status update failed:', e);
+            }
+            
+            // Update MCP Status
+            try {
+                const mcp = await api('GET', '/api/mcp/status', null);
+                let html = `<b>Autonomous Scheduler:</b> ${mcp.running ? 'RUNNING' : 'STOPPED'} | Cycle: ${mcp.cycle_count} | Ingst: ${mcp.ingestion_stats.total_ingestions} | Errs: ${mcp.ingestion_stats.total_errors}<br><br>`;
+                if (mcp.sources && mcp.sources.length) {
+                    html += `<b>Active Sources:</b><br>`;
+                    mcp.sources.forEach(s => {
+                        html += `• ${s.name} (${s.type}) - Next fetch: ${s.next_fetch || 'Soon'}<br>`;
+                    });
+                }
+                document.getElementById('mcp-status').innerHTML = html;
+            } catch (e) {
+                document.getElementById('mcp-status').innerHTML = "Failed to fetch MCP status.";
+            }
+        }
+
+        async function addMcpSource() {
+            const name = document.getElementById('mcp-name').value.trim();
+            const type = document.getElementById('mcp-type').value;
+            const uri = document.getElementById('mcp-uri').value.trim();
+            if (!name || !uri) { showError("Name and URI required for MCP source."); return; }
+            setLoading(true);
+            try {
+                await api('POST', '/api/mcp/source', { name, source_type: type, uri });
+                document.getElementById('mcp-name').value = '';
+                document.getElementById('mcp-uri').value = '';
+                updateStatus();
+            } catch (e) {
+                showError(e.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function loadLLMSettings() {
+            try {
+                const select = document.getElementById('llm-model');
+                // Fetch all models from server (which calls OpenRouter API)
+                const modelsRes = await api('GET', '/api/models', null);
+                if (modelsRes && modelsRes.models && modelsRes.models.length) {
+                    select.innerHTML = '';
+                    modelsRes.models.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.id;
+                        opt.textContent = m.name;
+                        select.appendChild(opt);
+                    });
+                    // Select the currently active model
+                    if (modelsRes.current) select.value = modelsRes.current;
+                }
+
+                const config = await api('GET', '/api/config/openrouter', null);
+                if (config.api_key) document.getElementById('llm-key').value = config.api_key;
+                if (config.model) select.value = config.model;
+            } catch (e) {
+                console.error('Failed to load LLM settings', e);
+            }
+        }
+
+        async function saveLLMSettings() {
+            const api_key = document.getElementById('llm-key').value.trim();
+            const model = document.getElementById('llm-model').value;
+            setLoading(true);
+            try {
+                await api('POST', '/api/config/openrouter', { api_key, model });
+                document.getElementById('llm-status').textContent = 'Settings saved successfully.';
+                setTimeout(() => document.getElementById('llm-status').textContent = '', 3000);
+            } catch (e) {
+                showError(e.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // ─── Init ───
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLLMSettings();
+            updateStatus();
+            // Auto-refresh status every 5 seconds
+            setInterval(updateStatus, 5000);
+        });
+
+        // ─── Enter key support ───
+        document.getElementById('reason-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') doReason();
+        });
+        document.getElementById('explain-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') doExplain();
+        });
+        document.getElementById('plan-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') doPlan();
+        });
+    </script>
+
+</body>
+
+</html>

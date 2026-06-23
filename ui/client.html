@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUNE Chat Client</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-card: #1c2333;
+            --border: #30363d;
+            --text-primary: #e6edf3;
+            --accent-cyan: #00d4ff;
+            --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        }
+        body {
+            font-family: var(--font-ui);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .header {
+            padding: 1rem;
+            background: linear-gradient(135deg, #0d1117 0%, #1c2333 100%);
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+            font-family: var(--font-mono);
+            color: var(--accent-cyan);
+            font-size: 1.2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header a {
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 0.8rem;
+            border: 1px solid var(--border);
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+        }
+        .header a:hover {
+            border-color: var(--accent-cyan);
+        }
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .message {
+            max-width: 80%;
+            padding: 1rem;
+            border-radius: 8px;
+            line-height: 1.5;
+        }
+        .user-message {
+            align-self: flex-end;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid var(--accent-cyan);
+        }
+        .bot-message {
+            align-self: flex-start;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            white-space: pre-wrap;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+        .input-area {
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 0.5rem;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        input {
+            flex: 1;
+            padding: 1rem;
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: white;
+            font-family: var(--font-ui);
+            font-size: 1rem;
+        }
+        button {
+            padding: 1rem 2rem;
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid var(--accent-cyan);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        button:hover {
+            background: rgba(0, 212, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div></div>
+        ◈ DUNE Scientific Assistant
+        <a href="/dev">Dev Mode</a>
+    </div>
+    <div class="chat-container" id="chat">
+        <div class="message bot-message">Hello. I am DUNE, continuously ingesting scientific data via MCP and RAG. Ask me anything.</div>
+    </div>
+    <div class="input-area">
+        <input type="text" id="prompt" placeholder="Message DUNE..." onkeypress="if(event.key === 'Enter') send()">
+        <button onclick="send()">Send</button>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@excalidraw/excalidraw@0.17.3/dist/excalidraw.production.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: false, theme: 'dark', suppressErrorRendering: true });
+
+        async function send() {
+            const input = document.getElementById('prompt');
+            const query = input.value.trim();
+            if (!query) return;
+            
+            appendMsg(query, 'user-message');
+            input.value = '';
+            
+            const typingId = appendMsg('Thinking...', 'bot-message');
+            
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query})
+                });
+                const text = await res.text();
+                
+                document.getElementById(typingId).remove();
+                appendMsg(text, 'bot-message');
+            } catch (e) {
+                document.getElementById(typingId).remove();
+                appendMsg(`Connection error: ${e.message}`, 'bot-message');
+            }
+        }
+        
+        let msgId = 0;
+        function appendMsg(text, className) {
+            const div = document.createElement('div');
+            div.className = `message ${className}`;
+            div.id = `msg-${msgId++}`;
+            
+            if (className.includes('bot-message')) {
+                div.innerHTML = marked.parse(text);
+                
+                const mermaidBlocks = div.querySelectorAll('code.language-mermaid');
+                mermaidBlocks.forEach((block) => {
+                    const pre = block.parentElement;
+                    const mermaidDiv = document.createElement('div');
+                    mermaidDiv.className = 'mermaid';
+                    let codeText = block.textContent.trim();
+                    if (codeText.startsWith('mermaid')) codeText = codeText.replace(/^mermaid\n?/, '');
+                    mermaidDiv.textContent = codeText;
+                    pre.replaceWith(mermaidDiv);
+                });
+                if (mermaidBlocks.length > 0) {
+                    try {
+                        mermaid.run({nodes: div.querySelectorAll('.mermaid')});
+                    } catch(e) {
+                        console.error('Mermaid render error:', e);
+                    }
+                }
+
+                // D3 blocks
+                const jsBlocks = div.querySelectorAll('code.language-javascript');
+                jsBlocks.forEach((block) => {
+                    const pre = block.parentElement;
+                    const chartId = 'd3-chart-' + Math.random().toString(36).substr(2, 9);
+                    const containerDiv = document.createElement('div');
+                    containerDiv.id = chartId;
+                    containerDiv.style.width = '100%';
+                    containerDiv.style.minHeight = '300px';
+                    containerDiv.style.background = '#ffffff'; // charts usually need white bg
+                    containerDiv.style.borderRadius = '8px';
+                    containerDiv.style.marginTop = '10px';
+                    
+                    const scriptCode = block.textContent.replace(/'#d3-container'/g, `'#${chartId}'`).replace(/"#d3-container"/g, `"#${chartId}"`).replace(/'d3-container'/g, `'${chartId}'`).replace(/"d3-container"/g, `"${chartId}"`);
+                    
+                    pre.replaceWith(containerDiv);
+                    
+                    setTimeout(() => {
+                        try {
+                            const func = new Function(scriptCode);
+                            func();
+                        } catch(e) {
+                            containerDiv.textContent = "[D3 Render Error: " + e.message + "]";
+                        }
+                    }, 50);
+                });
+
+                // Excalidraw blocks
+                const excalidrawBlocks = div.querySelectorAll('code.language-excalidraw');
+                excalidrawBlocks.forEach((block) => {
+                    const pre = block.parentElement;
+                    const containerDiv = document.createElement('div');
+                    containerDiv.className = 'excalidraw-container';
+                    containerDiv.style.width = '100%';
+                    containerDiv.style.minHeight = '200px';
+                    containerDiv.style.background = '#ffffff';
+                    containerDiv.style.borderRadius = '8px';
+                    containerDiv.style.marginTop = '10px';
+                    containerDiv.style.overflow = 'hidden';
+                    containerDiv.style.display = 'flex';
+                    containerDiv.style.alignItems = 'center';
+                    containerDiv.style.justifyContent = 'center';
+                    
+                    pre.replaceWith(containerDiv);
+                    
+                    try {
+                        let parsed = JSON.parse(block.textContent);
+                        let elements = Array.isArray(parsed) ? parsed : (parsed.elements || []);
+                        ExcalidrawLib.exportToSvg({
+                            elements: elements,
+                            appState: { viewBackgroundColor: "#ffffff", exportBackground: true }
+                        }).then(svg => {
+                            svg.style.maxWidth = '100%';
+                            svg.style.height = 'auto';
+                            containerDiv.appendChild(svg);
+                        }).catch(e => {
+                            containerDiv.textContent = "[Excalidraw Render Error: " + e.message + "]";
+                        });
+                    } catch(e) {
+                        containerDiv.textContent = "[Excalidraw JSON Parse Error: " + e.message + "]";
+                    }
+                });
+
+                // Presentation blocks
+                const presentationBlocks = div.querySelectorAll('code.language-presentation');
+                presentationBlocks.forEach((block) => {
+                    const pre = block.parentElement;
+                    const wrapper = document.createElement('div');
+                    wrapper.style.width = '100%';
+                    wrapper.style.height = '400px';
+                    wrapper.style.minHeight = '300px';
+                    wrapper.style.resize = 'vertical';
+                    wrapper.style.overflow = 'hidden';
+                    wrapper.style.border = '1px solid var(--accent-cyan)';
+                    wrapper.style.borderRadius = '8px';
+                    wrapper.style.marginTop = '15px';
+                    wrapper.style.marginBottom = '15px';
+                    wrapper.style.position = 'relative';
+
+                    const iframe = document.createElement('iframe');
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    iframe.style.background = '#191919';
+                    iframe.srcdoc = block.textContent;
+
+                    const fsBtn = document.createElement('button');
+                    fsBtn.textContent = '⛶ Fullscreen';
+                    fsBtn.style.position = 'absolute';
+                    fsBtn.style.bottom = '10px';
+                    fsBtn.style.right = '10px';
+                    fsBtn.style.padding = '4px 8px';
+                    fsBtn.style.fontSize = '0.7rem';
+                    fsBtn.style.background = 'rgba(0,0,0,0.6)';
+                    fsBtn.style.border = '1px solid var(--accent-cyan)';
+                    fsBtn.style.color = 'var(--text-primary)';
+                    fsBtn.style.borderRadius = '4px';
+                    fsBtn.style.cursor = 'pointer';
+                    fsBtn.style.zIndex = '10';
+
+                    fsBtn.onclick = () => {
+                        if (iframe.requestFullscreen) {
+                            iframe.requestFullscreen();
+                        } else if (iframe.webkitRequestFullscreen) {
+                            iframe.webkitRequestFullscreen();
+                        }
+                    };
+
+                    const copyBtn = document.createElement('button');
+                    copyBtn.textContent = '📄 Copy HTML';
+                    copyBtn.style.position = 'absolute';
+                    copyBtn.style.bottom = '10px';
+                    copyBtn.style.right = '105px';
+                    copyBtn.style.padding = '4px 8px';
+                    copyBtn.style.fontSize = '0.7rem';
+                    copyBtn.style.background = 'rgba(0,0,0,0.6)';
+                    copyBtn.style.border = '1px solid var(--accent-cyan)';
+                    copyBtn.style.color = 'var(--text-primary)';
+                    copyBtn.style.borderRadius = '4px';
+                    copyBtn.style.cursor = 'pointer';
+                    copyBtn.style.zIndex = '10';
+
+                    copyBtn.onclick = () => {
+                        navigator.clipboard.writeText(block.textContent);
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => copyBtn.textContent = '📄 Copy HTML', 2000);
+                    };
+
+                    wrapper.appendChild(iframe);
+                    wrapper.appendChild(fsBtn);
+                    wrapper.appendChild(copyBtn);
+                    pre.replaceWith(wrapper);
+                });
+
+                // Add copy buttons to standard code blocks
+                const allPreBlocks = div.querySelectorAll('pre');
+                allPreBlocks.forEach(pre => {
+                    // Skip if we already replaced it or it's a special block
+                    const code = pre.querySelector('code');
+                    if (!code || code.className.includes('language-mermaid') || code.className.includes('language-javascript') || code.className.includes('language-excalidraw') || code.className.includes('language-presentation')) {
+                        return;
+                    }
+                    
+                    const wrapper = document.createElement('div');
+                    wrapper.style.position = 'relative';
+                    pre.parentNode.insertBefore(wrapper, pre);
+                    wrapper.appendChild(pre);
+                    
+                    const btn = document.createElement('button');
+                    btn.textContent = 'Copy';
+                    btn.style.position = 'absolute';
+                    btn.style.top = '5px';
+                    btn.style.right = '5px';
+                    btn.style.padding = '4px 8px';
+                    btn.style.fontSize = '0.75rem';
+                    btn.style.background = 'rgba(255,255,255,0.1)';
+                    btn.style.border = '1px solid rgba(255,255,255,0.2)';
+                    btn.style.color = 'var(--text-primary)';
+                    btn.style.borderRadius = '4px';
+                    btn.style.cursor = 'pointer';
+                    
+                    btn.onclick = () => {
+                        navigator.clipboard.writeText(code.textContent);
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => btn.textContent = 'Copy', 2000);
+                    };
+                    
+                    wrapper.appendChild(btn);
+                });
+            } else {
+                div.textContent = text;
+            }
+            
+            document.getElementById('chat').appendChild(div);
+            div.scrollIntoView({behavior: 'smooth'});
+            return div.id;
+        }
+    </script>
+</body>
+</html>

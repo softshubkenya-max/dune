@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUNE AV — Audio-Visual Cognitive Interface</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #06080f;
+            --surface: #0e1220;
+            --surface2: #151b2e;
+            --border: #1e2740;
+            --text: #e2e8f0;
+            --text-dim: #7a8599;
+            --cyan: #00d4ff;
+            --purple: #a855f7;
+            --pink: #ec4899;
+            --green: #22d3ee;
+            --orange: #f97316;
+            --red: #ef4444;
+            --font: 'Inter', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            overflow: hidden;
+        }
+
+        /* ── Header ── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 1.5rem;
+            background: linear-gradient(135deg, #0a0e1a, #141a2e);
+            border-bottom: 1px solid var(--border);
+        }
+        .header-title {
+            font-family: var(--mono);
+            font-weight: 600;
+            font-size: 1rem;
+            background: linear-gradient(90deg, var(--cyan), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header-nav a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.75rem;
+            padding: 0.3rem 0.7rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-left: 0.5rem;
+            transition: all 0.2s;
+        }
+        .header-nav a:hover { border-color: var(--cyan); color: var(--cyan); }
+
+        /* ── Emotion Bar ── */
+        .emotion-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.5rem 1.5rem;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.75rem;
+            font-family: var(--mono);
+            color: var(--text-dim);
+            overflow-x: auto;
+        }
+        .emotion-tag {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            white-space: nowrap;
+            transition: all 0.4s ease;
+        }
+        .emotion-tag.active {
+            background: rgba(0,212,255,0.1);
+            border-color: var(--cyan);
+            color: var(--cyan);
+            box-shadow: 0 0 12px rgba(0,212,255,0.15);
+        }
+        .emotion-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--text-dim);
+            transition: background 0.4s;
+        }
+        .emotion-tag.active .emotion-dot { background: var(--cyan); }
+
+        /* ── Main Area ── */
+        .main {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            overflow: hidden;
+        }
+
+        /* ── Avatar Panel ── */
+        .avatar-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            gap: 1.5rem;
+        }
+        .orb-container {
+            position: relative;
+            width: 160px; height: 160px;
+        }
+        .orb {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.3), rgba(168,85,247,0.2), transparent 70%);
+            box-shadow: 0 0 40px rgba(0,212,255,0.15), inset 0 0 30px rgba(168,85,247,0.1);
+            animation: orbPulse 4s ease-in-out infinite;
+            transition: all 0.8s ease;
+        }
+        .orb-ring {
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(0,212,255,0.15);
+            animation: ringRotate 8s linear infinite;
+        }
+        .orb-ring::before {
+            content: '';
+            position: absolute;
+            top: -3px; left: 50%;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--cyan);
+            box-shadow: 0 0 8px var(--cyan);
+        }
+        .orb-ring2 {
+            position: absolute;
+            inset: -18px;
+            border-radius: 50%;
+            border: 1px solid rgba(168,85,247,0.1);
+            animation: ringRotate 12s linear infinite reverse;
+        }
+        .orb-ring2::before {
+            content: '';
+            position: absolute;
+            bottom: -2px; left: 50%;
+            width: 4px; height: 4px;
+            border-radius: 50%;
+            background: var(--purple);
+            box-shadow: 0 0 6px var(--purple);
+        }
+
+        @keyframes orbPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.04); }
+        }
+        @keyframes ringRotate { to { transform: rotate(360deg); } }
+
+        /* Emotion-driven orb states */
+        .orb.thinking {
+            animation: orbPulse 1s ease-in-out infinite;
+            box-shadow: 0 0 60px rgba(0,212,255,0.3), inset 0 0 40px rgba(0,212,255,0.15);
+        }
+        .orb.excited {
+            background: radial-gradient(circle at 35% 35%, rgba(249,115,22,0.4), rgba(236,72,153,0.3), transparent 70%);
+            box-shadow: 0 0 50px rgba(249,115,22,0.2);
+            animation: orbPulse 0.8s ease-in-out infinite;
+        }
+        .orb.calm {
+            background: radial-gradient(circle at 35% 35%, rgba(34,211,238,0.2), rgba(168,85,247,0.1), transparent 70%);
+            box-shadow: 0 0 30px rgba(34,211,238,0.1);
+            animation: orbPulse 6s ease-in-out infinite;
+        }
+        .orb.curious {
+            background: radial-gradient(circle at 35% 35%, rgba(168,85,247,0.4), rgba(0,212,255,0.2), transparent 70%);
+            box-shadow: 0 0 45px rgba(168,85,247,0.2);
+        }
+        .orb.serious {
+            background: radial-gradient(circle at 35% 35%, rgba(239,68,68,0.3), rgba(249,115,22,0.2), transparent 70%);
+            box-shadow: 0 0 35px rgba(239,68,68,0.15);
+            animation: orbPulse 3s ease-in-out infinite;
+        }
+        .orb.speaking {
+            animation: orbSpeak 0.3s ease-in-out infinite alternate;
+        }
+        @keyframes orbSpeak {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.06); }
+        }
+
+        .avatar-label {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .emotion-display {
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            color: var(--cyan);
+            text-align: center;
+            min-height: 1.2rem;
+            transition: color 0.4s;
+        }
+
+        /* Audio Controls */
+        .audio-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .audio-controls button {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .audio-controls button:hover { border-color: var(--cyan); color: var(--cyan); }
+        .audio-controls button.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,0.1); }
+
+        /* ── Chat Panel ── */
+        .chat-panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        .msg {
+            max-width: 85%;
+            padding: 0.85rem 1.1rem;
+            border-radius: 12px;
+            line-height: 1.6;
+            font-size: 0.88rem;
+            animation: msgIn 0.3s ease-out;
+        }
+        @keyframes msgIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .msg.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(168,85,247,0.08));
+            border: 1px solid rgba(0,212,255,0.25);
+            border-radius: 12px 12px 2px 12px;
+        }
+        .msg.bot {
+            align-self: flex-start;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 12px 12px 12px 2px;
+            white-space: pre-wrap;
+            font-family: var(--font);
+        }
+        .msg.bot .emotion-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            padding: 0.15rem 0.45rem;
+            border-radius: 10px;
+            background: rgba(0,212,255,0.1);
+            border: 1px solid rgba(0,212,255,0.2);
+            color: var(--cyan);
+            font-family: var(--mono);
+            margin-bottom: 0.5rem;
+        }
+        .msg.thinking {
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        /* ── Input Bar ── */
+        .input-bar {
+            display: flex;
+            gap: 0.5rem;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            background: var(--surface);
+        }
+        .input-bar input {
+            flex: 1;
+            padding: 0.8rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+        .input-bar input:focus { border-color: var(--cyan); }
+        .input-bar button {
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            border: 1px solid var(--cyan);
+            background: rgba(0,212,255,0.1);
+            color: var(--cyan);
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .input-bar button:hover { background: rgba(0,212,255,0.2); }
+        .mic-btn {
+            width: 42px;
+            padding: 0 !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+        .mic-btn.recording {
+            border-color: var(--red) !important;
+            color: var(--red) !important;
+            background: rgba(239,68,68,0.15) !important;
+            animation: micPulse 1s ease-in-out infinite;
+        }
+        @keyframes micPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); }
+            50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+        }
+
+        /* ── Voice selector ── */
+        .voice-settings {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0.3rem;
+        }
+        .voice-settings select {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 0.2rem 0.4rem;
+            border-radius: 6px;
+            font-size: 0.65rem;
+            font-family: var(--mono);
+            outline: none;
+        }
+        .voice-settings label {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            font-family: var(--mono);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 768px) {
+            .main { grid-template-columns: 1fr; }
+            .avatar-panel { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <span class="header-title">◈ DUNE AV — Audio-Visual Cognitive Interface</span>
+    <div class="header-nav">
+        <a href="/client">Chat</a>
+        <a href="/dev">Dev</a>
+    </div>
+</div>
+
+<div class="emotion-bar">
+    <span>STATE:</span>
+    <span class="emotion-tag" data-emotion="neutral"><span class="emotion-dot"></span> Neutral</span>
+    <span class="emotion-tag" data-emotion="curious"><span class="emotion-dot"></span> Curious</span>
+    <span class="emotion-tag" data-emotion="excited"><span class="emotion-dot"></span> Excited</span>
+    <span class="emotion-tag" data-emotion="calm"><span class="emotion-dot"></span> Calm</span>
+    <span class="emotion-tag" data-emotion="serious"><span class="emotion-dot"></span> Serious</span>
+    <span class="emotion-tag" data-emotion="thinking"><span class="emotion-dot"></span> Thinking</span>
+</div>
+
+<div class="main">
+    <div class="avatar-panel">
+        <div class="orb-container">
+            <div class="orb-ring2"></div>
+            <div class="orb-ring"></div>
+            <div class="orb" id="orb"></div>
+        </div>
+        <div class="avatar-label">DUNE CORTEX</div>
+        <div class="emotion-display" id="emotion-label">● Neutral</div>
+        <div class="audio-controls">
+            <button id="btn-tts" title="Toggle Voice Output" onclick="toggleTTS()">🔊</button>
+            <button id="btn-auto" title="Auto-Speak Replies" onclick="toggleAutoSpeak()">🤖</button>
+        </div>
+        <div class="voice-settings">
+            <label>Voice:</label>
+            <select id="voice-select"></select>
+        </div>
+        <div class="voice-settings" style="margin-top:0.2rem;">
+            <label>Speed:</label>
+            <input type="range" id="voice-rate" min="0.5" max="2" step="0.1" value="1" style="width:80px;">
+            <span id="rate-val" style="font-size:0.6rem;color:var(--text-dim);font-family:var(--mono);">1.0</span>
+        </div>
+    </div>
+
+    <div class="chat-panel">
+        <div class="messages" id="messages">
+            <div class="msg bot">Welcome. I am DUNE, your Audio-Visual Cognitive Interface. Ask me anything — I will reason, explain, and speak.</div>
+        </div>
+        <div class="input-bar">
+            <button class="mic-btn" id="mic-btn" onclick="toggleMic()" title="Voice Input">🎙</button>
+            <input type="text" id="input" placeholder="Speak or type your query..." onkeydown="if(event.key==='Enter')send()">
+            <button onclick="send()">Send ⟩</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@excalidraw/excalidraw@0.17.3/dist/excalidraw.production.min.js"></script>
+<script>
+mermaid.initialize({ startOnLoad: false, theme: 'dark', suppressErrorRendering: true });
+// ── State ──
+let ttsEnabled = true;
+let autoSpeak = true;
+let isSpeaking = false;
+let isRecording = false;
+let recognition = null;
+let msgCount = 0;
+
+// ── Emotion Detection ──
+const EMOTIONS = {
+    excited: ['breakthrough', 'incredible', 'revolutionary', 'amazing', 'extraordinary', 'visionary', 'invention', 'discover', 'wow', 'remarkable', 'astonishing', 'groundbreaking', 'paradigm', 'transform'],
+    curious: ['perhaps', 'wonder', 'explore', 'question', 'hypothesis', 'investigate', 'delve', 'interesting', 'fascinating', 'intriguing', 'speculate', 'what if', 'ponder'],
+    serious: ['critical', 'danger', 'warning', 'caution', 'fatal', 'catastroph', 'collapse', 'destroy', 'lethal', 'urgent', 'crisis', 'threat', 'risk', 'severe'],
+    calm: ['understand', 'simply', 'essentially', 'fundamentally', 'basic', 'foundation', 'principle', 'summary', 'conclude', 'peace', 'gentle', 'steady', 'balance'],
+    thinking: ['analyzing', 'processing', 'computing', 'reasoning', 'evaluating', 'calculating', 'inference', 'evidence', 'bayesian', 'posterior', 'confidence']
+};
+
+function detectEmotion(text) {
+    const lower = text.toLowerCase();
+    let scores = {};
+    for (const [emotion, keywords] of Object.entries(EMOTIONS)) {
+        scores[emotion] = keywords.reduce((s, kw) => s + (lower.includes(kw) ? 1 : 0), 0);
+    }
+    let best = 'neutral';
+    let max = 0;
+    for (const [em, sc] of Object.entries(scores)) {
+        if (sc > max) { max = sc; best = em; }
+    }
+    return max >= 1 ? best : 'neutral';
+}
+
+function applyEmotion(emotion) {
+    const orb = document.getElementById('orb');
+    orb.className = 'orb ' + emotion;
+
+    const label = document.getElementById('emotion-label');
+    const emoMap = {
+        neutral: { icon: '●', color: 'var(--cyan)' },
+        excited: { icon: '🔥', color: 'var(--orange)' },
+        curious: { icon: '🔮', color: 'var(--purple)' },
+        serious: { icon: '⚠', color: 'var(--red)' },
+        calm:    { icon: '🌊', color: 'var(--green)' },
+        thinking:{ icon: '⚡', color: 'var(--cyan)' }
+    };
+    const e = emoMap[emotion] || emoMap.neutral;
+    label.textContent = `${e.icon} ${emotion.charAt(0).toUpperCase() + emotion.slice(1)}`;
+    label.style.color = e.color;
+
+    document.querySelectorAll('.emotion-tag').forEach(tag => {
+        tag.classList.toggle('active', tag.dataset.emotion === emotion);
+    });
+}
+
+// ── TTS ──
+function populateVoices() {
+    const sel = document.getElementById('voice-select');
+    const voices = speechSynthesis.getVoices();
+    sel.innerHTML = '';
+    voices.forEach((v, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = v.name.substring(0, 28);
+        if (v.lang.startsWith('en') && v.name.includes('Google')) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+speechSynthesis.onvoiceschanged = populateVoices;
+setTimeout(populateVoices, 500);
+
+document.getElementById('voice-rate').addEventListener('input', function() {
+    document.getElementById('rate-val').textContent = parseFloat(this.value).toFixed(1);
+});
+
+function speak(text) {
+    if (!ttsEnabled) return;
+    speechSynthesis.cancel();
+    const clean = text.replace(/[#*_`~\[\]]/g, '').replace(/\n{2,}/g, '. ').replace(/\n/g, ' ');
+    const utt = new SpeechSynthesisUtterance(clean);
+    const voices = speechSynthesis.getVoices();
+    const voiceIdx = parseInt(document.getElementById('voice-select').value) || 0;
+    if (voices[voiceIdx]) utt.voice = voices[voiceIdx];
+    utt.rate = parseFloat(document.getElementById('voice-rate').value);
+    utt.pitch = 1.0;
+
+    const orb = document.getElementById('orb');
+    utt.onstart = () => { isSpeaking = true; orb.classList.add('speaking'); };
+    utt.onend = () => { isSpeaking = false; orb.classList.remove('speaking'); };
+    utt.onerror = () => { isSpeaking = false; orb.classList.remove('speaking'); };
+    speechSynthesis.speak(utt);
+}
+
+function toggleTTS() {
+    ttsEnabled = !ttsEnabled;
+    const btn = document.getElementById('btn-tts');
+    btn.textContent = ttsEnabled ? '🔊' : '🔇';
+    btn.classList.toggle('active', ttsEnabled);
+    if (!ttsEnabled) speechSynthesis.cancel();
+}
+
+function toggleAutoSpeak() {
+    autoSpeak = !autoSpeak;
+    document.getElementById('btn-auto').classList.toggle('active', autoSpeak);
+}
+
+// ── Voice Input (STT) ──
+function toggleMic() {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+        alert('Speech recognition not supported in this browser.');
+        return;
+    }
+    if (isRecording) {
+        recognition.stop();
+        return;
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+        isRecording = true;
+        document.getElementById('mic-btn').classList.add('recording');
+    };
+    recognition.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        document.getElementById('input').value = transcript;
+        send();
+    };
+    recognition.onend = () => {
+        isRecording = false;
+        document.getElementById('mic-btn').classList.remove('recording');
+    };
+    recognition.onerror = () => {
+        isRecording = false;
+        document.getElementById('mic-btn').classList.remove('recording');
+    };
+    recognition.start();
+}
+
+// ── Chat ──
+function addMsg(text, type, emotion) {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `msg ${type}`;
+    div.id = `msg-${msgCount++}`;
+
+    if (type.includes('bot') && !type.includes('thinking')) {
+        let contentDiv = document.createElement('div');
+        if (emotion && emotion !== 'neutral') {
+            const badge = document.createElement('span');
+            badge.className = 'emotion-badge';
+            badge.textContent = emotion.toUpperCase();
+            contentDiv.appendChild(badge);
+            contentDiv.appendChild(document.createElement('br'));
+        }
+        
+        let markdownDiv = document.createElement('div');
+        markdownDiv.innerHTML = marked.parse(text);
+        
+        const mermaidBlocks = markdownDiv.querySelectorAll('code.language-mermaid');
+        mermaidBlocks.forEach((block) => {
+            const pre = block.parentElement;
+            const mermaidDiv = document.createElement('div');
+            mermaidDiv.className = 'mermaid';
+            let codeText = block.textContent.trim();
+            if (codeText.startsWith('mermaid')) codeText = codeText.replace(/^mermaid\n?/, '');
+            mermaidDiv.textContent = codeText;
+            pre.replaceWith(mermaidDiv);
+        });
+
+        // D3 blocks
+        const jsBlocks = markdownDiv.querySelectorAll('code.language-javascript');
+        jsBlocks.forEach((block) => {
+            const pre = block.parentElement;
+            const chartId = 'd3-chart-' + Math.random().toString(36).substr(2, 9);
+            const containerDiv = document.createElement('div');
+            containerDiv.id = chartId;
+            containerDiv.style.width = '100%';
+            containerDiv.style.minHeight = '300px';
+            containerDiv.style.background = '#ffffff'; // charts usually need white bg
+            containerDiv.style.borderRadius = '8px';
+            containerDiv.style.marginTop = '10px';
+            
+            const scriptCode = block.textContent.replace(/'#d3-container'/g, `'#${chartId}'`).replace(/"#d3-container"/g, `"#${chartId}"`).replace(/'d3-container'/g, `'${chartId}'`).replace(/"d3-container"/g, `"${chartId}"`);
+            
+            pre.replaceWith(containerDiv);
+            
+            setTimeout(() => {
+                try {
+                    const func = new Function(scriptCode);
+                    func();
+                } catch(e) {
+                    containerDiv.textContent = "[D3 Render Error: " + e.message + "]";
+                }
+            }, 50);
+        });
+
+        // Excalidraw blocks
+        const excalidrawBlocks = markdownDiv.querySelectorAll('code.language-excalidraw');
+        excalidrawBlocks.forEach((block) => {
+            const pre = block.parentElement;
+            const containerDiv = document.createElement('div');
+            containerDiv.className = 'excalidraw-container';
+            containerDiv.style.width = '100%';
+            containerDiv.style.minHeight = '200px';
+            containerDiv.style.background = '#ffffff';
+            containerDiv.style.borderRadius = '8px';
+            containerDiv.style.marginTop = '10px';
+            containerDiv.style.overflow = 'hidden';
+            containerDiv.style.display = 'flex';
+            containerDiv.style.alignItems = 'center';
+            containerDiv.style.justifyContent = 'center';
+            
+            pre.replaceWith(containerDiv);
+            
+            try {
+                let parsed = JSON.parse(block.textContent);
+                let elements = Array.isArray(parsed) ? parsed : (parsed.elements || []);
+                ExcalidrawLib.exportToSvg({
+                    elements: elements,
+                    appState: { viewBackgroundColor: "#ffffff", exportBackground: true }
+                }).then(svg => {
+                    svg.style.maxWidth = '100%';
+                    svg.style.height = 'auto';
+                    containerDiv.appendChild(svg);
+                }).catch(e => {
+                    containerDiv.textContent = "[Excalidraw Render Error: " + e.message + "]";
+                });
+            } catch(e) {
+                containerDiv.textContent = "[Excalidraw JSON Parse Error: " + e.message + "]";
+            }
+        });
+        
+        // Presentation blocks
+        const presentationBlocks = markdownDiv.querySelectorAll('code.language-presentation');
+        presentationBlocks.forEach((block) => {
+            const pre = block.parentElement;
+            const wrapper = document.createElement('div');
+            wrapper.style.width = '100%';
+            wrapper.style.height = '400px';
+            wrapper.style.minHeight = '300px';
+            wrapper.style.resize = 'vertical';
+            wrapper.style.overflow = 'hidden';
+            wrapper.style.border = '1px solid var(--cyan)';
+            wrapper.style.borderRadius = '8px';
+            wrapper.style.marginTop = '15px';
+            wrapper.style.marginBottom = '15px';
+            wrapper.style.position = 'relative';
+
+            const iframe = document.createElement('iframe');
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = 'none';
+            iframe.style.background = '#191919';
+            iframe.srcdoc = block.textContent;
+
+            const fsBtn = document.createElement('button');
+            fsBtn.textContent = '⛶ Fullscreen';
+            fsBtn.style.position = 'absolute';
+            fsBtn.style.bottom = '10px';
+            fsBtn.style.right = '10px';
+            fsBtn.style.padding = '4px 8px';
+            fsBtn.style.fontSize = '0.7rem';
+            fsBtn.style.background = 'rgba(0,0,0,0.6)';
+            fsBtn.style.border = '1px solid var(--cyan)';
+            fsBtn.style.color = 'var(--text)';
+            fsBtn.style.borderRadius = '4px';
+            fsBtn.style.cursor = 'pointer';
+            fsBtn.style.zIndex = '10';
+
+            fsBtn.onclick = () => {
+                if (iframe.requestFullscreen) {
+                    iframe.requestFullscreen();
+                } else if (iframe.webkitRequestFullscreen) {
+                    iframe.webkitRequestFullscreen();
+                }
+            };
+
+            const copyBtn = document.createElement('button');
+            copyBtn.textContent = '📄 Copy HTML';
+            copyBtn.style.position = 'absolute';
+            copyBtn.style.bottom = '10px';
+            copyBtn.style.right = '105px';
+            copyBtn.style.padding = '4px 8px';
+            copyBtn.style.fontSize = '0.7rem';
+            copyBtn.style.background = 'rgba(0,0,0,0.6)';
+            copyBtn.style.border = '1px solid var(--cyan)';
+            copyBtn.style.color = 'var(--text)';
+            copyBtn.style.borderRadius = '4px';
+            copyBtn.style.cursor = 'pointer';
+            copyBtn.style.zIndex = '10';
+
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(block.textContent);
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => copyBtn.textContent = '📄 Copy HTML', 2000);
+            };
+
+            wrapper.appendChild(iframe);
+            wrapper.appendChild(fsBtn);
+            wrapper.appendChild(copyBtn);
+            pre.replaceWith(wrapper);
+        });
+        
+        contentDiv.appendChild(markdownDiv);
+        div.appendChild(contentDiv);
+        container.appendChild(div);
+        
+        if (mermaidBlocks.length > 0) {
+            try {
+                mermaid.run({nodes: div.querySelectorAll('.mermaid')});
+            } catch(e) {
+                console.error('Mermaid render error:', e);
+            }
+        }
+
+        // Add copy buttons to standard code blocks
+        const allPreBlocks = div.querySelectorAll('pre');
+        allPreBlocks.forEach(pre => {
+            // Skip if we already replaced it or it's a special block
+            const code = pre.querySelector('code');
+            if (!code || code.className.includes('language-mermaid') || code.className.includes('language-javascript') || code.className.includes('language-excalidraw') || code.className.includes('language-presentation')) {
+                return;
+            }
+            
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'relative';
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(pre);
+            
+            const btn = document.createElement('button');
+            btn.textContent = 'Copy';
+            btn.style.position = 'absolute';
+            btn.style.top = '5px';
+            btn.style.right = '5px';
+            btn.style.padding = '4px 8px';
+            btn.style.fontSize = '0.75rem';
+            btn.style.background = 'rgba(255,255,255,0.1)';
+            btn.style.border = '1px solid rgba(255,255,255,0.2)';
+            btn.style.color = 'var(--text)';
+            btn.style.borderRadius = '4px';
+            btn.style.cursor = 'pointer';
+            
+            btn.onclick = () => {
+                navigator.clipboard.writeText(code.textContent);
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy', 2000);
+            };
+            
+            wrapper.appendChild(btn);
+        });
+    } else {
+        if (type === 'bot' && emotion && emotion !== 'neutral') {
+            const badge = document.createElement('span');
+            badge.className = 'emotion-badge';
+            badge.textContent = emotion.toUpperCase();
+            div.appendChild(badge);
+            div.appendChild(document.createElement('br'));
+        }
+        div.appendChild(document.createTextNode(text));
+        container.appendChild(div);
+    }
+    div.scrollIntoView({ behavior: 'smooth' });
+    return div.id;
+}
+
+async function send() {
+    const input = document.getElementById('input');
+    const query = input.value.trim();
+    if (!query) return;
+
+    addMsg(query, 'user');
+    input.value = '';
+
+    // Set thinking state
+    applyEmotion('thinking');
+    const thinkId = addMsg('Reasoning...', 'bot thinking');
+
+    try {
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query })
+        });
+        const text = await res.text();
+
+        document.getElementById(thinkId).remove();
+
+        // Detect emotion from response
+        const emotion = detectEmotion(text);
+        applyEmotion(emotion);
+
+        addMsg(text, 'bot', emotion);
+
+        // Auto-speak
+        if (autoSpeak) speak(text);
+
+    } catch (e) {
+        document.getElementById(thinkId).remove();
+        applyEmotion('serious');
+        addMsg(`Connection error: ${e.message}`, 'bot', 'serious');
+    }
+}
+
+// ── Init ──
+applyEmotion('neutral');
+document.getElementById('btn-tts').classList.add('active');
+document.getElementById('btn-auto').classList.add('active');
+</script>
+</body>
+</html>
