@@ -1,0 +1,42 @@
+DUNE--1900-L Render Blueprint
+Deploy with: one-click via Render Dashboard or `render blueprint` CLI
+#
+# This file enables Render's "Blueprint" feature (infrastructure-as-code).
+# Connect your GitHub repo and Render auto-detects this file.
+#
+# Required environment variables (set in Render dashboard):
+#   OPENROUTER_API_KEY  - Your OpenRouter API key for LLM inference
+#   HUGGINGFACE_API_KEY - (Optional) HuggingFace API key
+#   OLLAMA_MODEL        - (Optional, for local Ollama)
+
+services:
+  # ── Web Service: DUNE Cognitive Server ──
+  - type: web
+    name: dune-omega
+    env: python
+    region: oregon  # Change to your nearest region: frankfurt, singapore, etc.
+    plan: free      # Free tier works for personal use
+
+    buildCommand: pip install -e .
+    startCommand: python3 ui/server.py
+
+    healthCheckPath: /api/status
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DUNE_HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8080
+      # LLM API Keys (set these in Render dashboard as "Secret Files" or env vars)
+      - key: OPENROUTER_API_KEY
+        sync: false  # User must set this manually in dashboard
+      - key: HUGGINGFACE_API_KEY
+        sync: false
+
+    # Optional disk persistence for SQLite database
+    disk:
+      name: dune-data
+      mountPath: /app/ui
+      sizeGB: 1
